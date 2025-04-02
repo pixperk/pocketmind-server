@@ -14,12 +14,13 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(uuid()) 
-  username String  @unique
-  email   String   @unique
-  password String
-  avatar   String 
-  note     Note[]
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  avatar    String
+  note      Note[]
+  task      Task[]
   createdAt DateTime @default(now())
 }
 
@@ -27,7 +28,7 @@ model Note {
   id        String   @id @default(uuid())
   title     String
   content   String   @db.Text
-  tags       Tag[]   @relation("NoteTag") 
+  tags      Tag[]    @relation("NoteTag")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String
@@ -37,14 +38,52 @@ model Note {
   linkedNoteId String?
   linkedNote   Note?   @relation("LinkedNote", fields: [linkedNoteId], references: [id], onDelete: SetNull)
   linkedFrom   Note[]  @relation("LinkedNote")
+  task         Task[]  @relation("NoteTask")
 }
 
-model Tag{
+model Tag {
   id        String   @id @default(uuid())
   name      String   @unique
   color     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   notes     Note[]   @relation("NoteTag")
+  tasks     Task[]   @relation("TaskTag")
 }
 
+enum priority {
+  low
+  normal
+  high
+}
+
+enum recurrence {
+  days
+  weeks
+  months
+  years
+}
+
+enum status {
+  pending
+  completed
+}
+
+model Task {
+  id          String  @id @default(uuid())
+  title       String
+  description String? @db.Text
+  status      status  @default(pending)
+
+  dueDate            DateTime?
+  priority           priority    @default(normal)
+  recurrencePattern  recurrence?
+  recurrenceInterval Int?
+  tags               Tag[]       @relation("TaskTag")
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  notes              Note[]      @relation("NoteTask")
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
