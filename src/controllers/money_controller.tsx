@@ -1,6 +1,7 @@
 import { Context } from "hono";
 import { boolean, z } from "zod";
 import { getPrisma } from "../util/db";
+import { Prisma } from "@prisma/client";
 
 export async function lendMoney(c: Context) {
   const body = await c.req.json();
@@ -85,29 +86,50 @@ export async function markDebtAsCleared(c: Context) {
   }
 }
 
-export async function getMyDebts(c: Context) {
+export async function getAllTransactions(c: Context) {
     const prisma = getPrisma(c.env.DATABASE_URL);
     const userId = c.get("jwtPayload")?.userId as string;
-    const isCompleted =  c.req.query("isCompleted")
-
-    if (isCompleted !== "true" && isCompleted !== "false") {
-        return c.json({ error: "isCompleted must be a boolean" }, 400);
-    }
+    const isCompleted = c.req.query("isCompleted");
+    const type = c.req.query("type");
     try {
-        const debts = await prisma.debt.findMany({
-        where: {
-            debtorId: userId,
-            status: isCompleted === "true" ? "completed" : "pending",
+        // Define the base query
+        let whereClause: Prisma.DebtWhereInput = {};
+        
+        // Filter by status if specified
+        // Filter by status if specified
+        if (isCompleted === "true") {
+            whereClause.status = "completed";
+        } else if (isCompleted === "false") {
+            whereClause.status = "pending";
+        }
+        // Otherwise, return both completed and pending
+        
+        // Filter by type if specified
+        if (type === "lent") {
+            whereClause.creditorId = userId;
+        } else if (type === "debts") {
+            whereClause.debtorId = userId;
+        } else if (!type || type === "all") {
+            // If type is "all" or not specified, get both types
+            whereClause.OR = [
+                { creditorId: userId },
+                { debtorId: userId }
+            ];
+        } else {
+            return c.json({ error: "type must be 'lent', 'debts', or 'all'" }, 400);
+        }
 
-        },
-        include: {
-            creditor: true,
-            debtor: true,
-        },
+        const debts = await prisma.debt.findMany({
+            where: whereClause,
+            include: {
+                creditor: true,
+                debtor: true,
+            },
         });
+        
         return c.json(debts, 200);
     } catch (error) {
-        console.error("Error fetching debts:", error);
-        return c.json({ error: "Failed to fetch debts" }, 500);
+        console.error("Error fetching transactions:", error);
+        return c.json({ error: "Failed to fetch transactions" }, 500);
     }
 }
