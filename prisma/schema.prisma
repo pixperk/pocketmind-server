@@ -21,8 +21,12 @@ model User {
   avatar    String
   note      Note[]
   task      Task[]
+  ower      OwerOwee[] @relation("Ower")
+  owee      OwerOwee[] @relation("Owee")
   createdAt DateTime @default(now())
 }
+
+//notes are the main entity in the app, they can be linked to each other
 
 model Note {
   id        String   @id @default(uuid())
@@ -41,6 +45,7 @@ model Note {
   task         Task[]  @relation("NoteTask")
 }
 
+//tags to categorize notes and tasks
 model Tag {
   id        String   @id @default(uuid())
   name      String   @unique
@@ -69,6 +74,7 @@ enum status {
   completed
 }
 
+//tasks (can be linked to notes)
 model Task {
   id          String  @id @default(uuid())
   title       String
@@ -86,4 +92,26 @@ model Task {
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
+}
+
+
+enum currency{
+  USD
+  INR
+}
+
+
+//money management
+model OwerOwee{
+  id String @id @default(uuid())
+  amount Int
+  currency currency @default(INR)
+  description String
+  owerId String
+  ower User @relation("Ower", fields: [owerId], references: [id])
+  oweeId String
+  owee User @relation("Owee", fields: [oweeId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  status status @default(pending) 
 }
