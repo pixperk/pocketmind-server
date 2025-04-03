@@ -106,7 +106,9 @@ model Debt {
   id          String   @id @default(uuid())
   amount      Int
   currency    Currency
-  description String
+  description String?
+  dateOfLending DateTime
+  dueDate DateTime?
   debtorId    String
   debtor      User     @relation("Debtor", fields: [debtorId], references: [id])
   creditorId  String
