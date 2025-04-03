@@ -13,7 +13,6 @@ export async function createTask (c : Context){
         priority: z.enum(['low', 'normal', 'high']),
         tags: z.array(z.string()).optional(),
         noteIds : z.array(z.string()).optional(),
-        status: z.enum(['pending', 'completed']),
     });
 
     const parsed = schema.safeParse(body);
@@ -51,7 +50,7 @@ export async function createTask (c : Context){
     }
 
     //tx to upsert tags first and then the task
-    const { title, description, priority, tags, noteIds, status } = parsed.data;
+    const { title, description, priority, tags, noteIds } = parsed.data;
     const prisma = getPrisma(c.env.DATABASE_URL);
     const userId: string = c.get("jwtPayload")?.userId as string;
 
@@ -81,7 +80,7 @@ export async function createTask (c : Context){
                     recurrencePattern,
                     recurrenceInterval,
                     priority,
-                    status,
+                    status : "pending",
                     userId,
                     tags: {
                         connect: tags?.map((tag) => ({ name: tag })),
@@ -246,6 +245,110 @@ export async function updateTask (c : Context){
     } catch (error) {
         console.error("Error updating task:", error);
         return c.json({ error: "Failed to update task" }, 500);
+    }
+}
+
+//get task by id
+export async function getTaskById (c : Context){
+    const taskId = c.req.param("taskId");
+    if (!taskId) return c.json({ error: "Task ID is required" }, 400);
+
+    const prisma = getPrisma(c.env.DATABASE_URL);
+    const userId: string = c.get("jwtPayload")?.userId as string;
+
+    if (!userId) {
+        return c.json({ error: "User not found" }, 404);
+    }
+
+    try {
+        const task = await prisma.task.findUnique({
+            where: {
+                id: taskId,
+            },
+            include: {
+                tags: true,
+                notes: true,
+            },
+        });
+
+        if (!task) return c.json({ error: "Task not found" }, 404);
+
+        return c.json(task, 200);
+    } catch (error) {
+        console.error("Error fetching task:", error);
+        return c.json({ error: "Failed to fetch task" }, 500);
+    }
+}
+
+//get tasks by tag
+export async function getTasksByTag (c : Context){
+    const tagName = c.req.param("tagName");
+    if (!tagName) return c.json({ error: "Tag name is required" }, 400);
+
+    const prisma = getPrisma(c.env.DATABASE_URL);
+    const userId: string = c.get("jwtPayload")?.userId as string;
+
+    if (!userId) {
+        return c.json({ error: "User not found" }, 404);
+    }
+
+    try {
+        const tasks = await prisma.task.findMany({
+            where: {
+                userId,
+                tags: {
+                    some: {
+                        name: tagName,
+                    },
+                },
+            },
+            include: {
+                tags: true,
+                notes: true,
+            },
+        });
+
+        return c.json(tasks, 200);
+    } catch (error) {
+        console.error("Error fetching tasks by tag:", error);
+        return c.json({ error: "Failed to fetch tasks by tag" }, 500);
+    }
+}
+
+//toggle task status
+export async function toggleTaskStatus (c : Context){
+    const taskId = c.req.param("taskId");
+    if (!taskId) return c.json({ error: "Task ID is required" }, 400);
+
+    const prisma = getPrisma(c.env.DATABASE_URL);
+    const userId: string = c.get("jwtPayload")?.userId as string;
+
+    if (!userId) {
+        return c.json({ error: "User not found" }, 404);
+    }
+
+    try {
+        const task = await prisma.task.findUnique({
+            where: {
+                id: taskId,
+            },
+        });
+
+        if (!task) return c.json({ error: "Task not found" }, 404);
+
+        const updatedTask = await prisma.task.update({
+            where: {
+                id: taskId,
+            },
+            data: {
+                status: task.status === "pending" ? "completed" : "pending",
+            },
+        });
+
+        return c.json(updatedTask, 200);
+    } catch (error) {
+        console.error("Error toggling task status:", error);
+        return c.json({ error: "Failed to toggle task status" }, 500);
     }
 }
 

@@ -185,3 +185,98 @@ export async function deleteNote(c: Context) {
     return c.json({ error: "Failed to delete note" }, 500);
   }
 }
+
+// Update the note with the given ID
+export async function updateNote(c: Context) {
+  const noteId = c.req.param("noteId");
+  if (!noteId) {
+    return c.json({ error: "Note ID is required" }, 400);
+  }
+
+  const body = await c.req.json();
+  const schema = z.object({
+    title: z.string().min(3).optional(),
+    content: z.string().min(3).optional(),
+    tags: z.array(z.string()).optional(),
+  });
+
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    return c.json({ error: result.error.format() }, 400);
+  }
+
+  const { title, content, tags } = result.data;
+  const prisma = getPrisma(c.env.DATABASE_URL);
+
+  try {
+    const updatedNote = await prisma.note.update({
+      where: { id: noteId },
+      data: {
+        title,
+        content,
+        tags: {
+          set: tags?.map((tag) => ({ name: tag })),
+        },
+      },
+    });
+    return c.json(updatedNote, 200);
+  } catch (error) {
+    console.error("Error updating note:", error);
+    return c.json({ error: "Failed to update note" }, 500);
+  }
+}
+
+// Get a note by its ID
+export async function getNoteById(c: Context) {
+  const noteId = c.req.param("noteId");
+  if (!noteId) {
+    return c.json({ error: "Note ID is required" }, 400);
+  }
+
+  const prisma = getPrisma(c.env.DATABASE_URL);
+
+  try {
+    const note = await prisma.note.findUnique({
+      where: { id: noteId },
+      include: {
+        tags: true,
+      },
+    });
+    if (!note) {
+      return c.json({ error: "Note not found" }, 404);
+    }
+    return c.json(note, 200);
+  } catch (error) {
+    console.error("Error fetching note:", error);
+    return c.json({ error: "Failed to fetch note" }, 500);
+  }
+}
+
+//get a note by tag name
+export async function getNoteByTag(c: Context) {
+  const tagName = c.req.param("tagName");
+  if (!tagName) {
+    return c.json({ error: "Tag name is required" }, 400);
+  }
+
+  const prisma = getPrisma(c.env.DATABASE_URL);
+
+  try {
+    const notes = await prisma.note.findMany({
+      where: {
+        tags: {
+          some: {
+            name: tagName,
+          },
+        },
+      },
+      include: {
+        tags: true,
+      },
+    });
+    return c.json(notes, 200);
+  } catch (error) {
+    console.error("Error fetching notes by tag:", error);
+    return c.json({ error: "Failed to fetch notes by tag" }, 500);
+  }
+}
