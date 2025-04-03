@@ -21,8 +21,8 @@ model User {
   avatar    String
   note      Note[]
   task      Task[]
-  ower      OwerOwee[] @relation("Ower")
-  owee      OwerOwee[] @relation("Owee")
+  debtor      Debt[] @relation("Debtor")
+  creditor    Debt[] @relation("Creditor")
   createdAt DateTime @default(now())
 }
 
@@ -62,14 +62,14 @@ enum priority {
   high
 }
 
-enum recurrence {
+enum Recurrence {
   days
   weeks
   months
   years
 }
 
-enum status {
+enum Status {
   pending
   completed
 }
@@ -79,11 +79,11 @@ model Task {
   id          String  @id @default(uuid())
   title       String
   description String? @db.Text
-  status      status  @default(pending)
+  status      Status  @default(pending)
 
   dueDate            DateTime?
   priority           priority    @default(normal)
-  recurrencePattern  recurrence?
+  recurrencePattern  Recurrence?
   recurrenceInterval Int?
   tags               Tag[]       @relation("TaskTag")
   createdAt          DateTime    @default(now())
@@ -95,23 +95,23 @@ model Task {
 }
 
 
-enum currency{
+enum Currency{
   USD
   INR
 }
 
 
 //money management
-model OwerOwee{
-  id String @id @default(uuid())
-  amount Int
-  currency currency @default(INR)
+model Debt {
+  id          String   @id @default(uuid())
+  amount      Int
+  currency    Currency
   description String
-  owerId String
-  ower User @relation("Ower", fields: [owerId], references: [id])
-  oweeId String
-  owee User @relation("Owee", fields: [oweeId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  status status @default(pending) 
+  debtorId    String
+  debtor      User     @relation("Debtor", fields: [debtorId], references: [id])
+  creditorId  String
+  creditor    User     @relation("Creditor", fields: [creditorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  status      Status   @default(pending) 
 }
