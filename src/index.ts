@@ -5,6 +5,7 @@ import { Env } from './config';
 import { auth } from './routes/auth';
 import { note } from './routes/note';
 import { planner } from './routes/planner';
+import { money } from './routes/money';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -13,6 +14,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.route('/auth', auth)
 app.route('/note', note)
 app.route('/planner', planner)
+app.route('/money', money)
 
 app.get('/health',(c)=>{
   return c.json({status : 'ok'})
