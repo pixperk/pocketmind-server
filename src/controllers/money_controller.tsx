@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { z } from "zod";
+import { boolean, z } from "zod";
 import { getPrisma } from "../util/db";
 
 export async function lendMoney(c: Context) {
@@ -83,4 +83,31 @@ export async function markDebtAsCleared(c: Context) {
     console.error("Error updating debt:", error);
     return c.json({ error: "Failed to update debt" }, 500);
   }
+}
+
+export async function getMyDebts(c: Context) {
+    const prisma = getPrisma(c.env.DATABASE_URL);
+    const userId = c.get("jwtPayload")?.userId as string;
+    const isCompleted =  c.req.query("isCompleted")
+
+    if (isCompleted !== "true" && isCompleted !== "false") {
+        return c.json({ error: "isCompleted must be a boolean" }, 400);
+    }
+    try {
+        const debts = await prisma.debt.findMany({
+        where: {
+            debtorId: userId,
+            status: isCompleted === "true" ? "completed" : "pending",
+
+        },
+        include: {
+            creditor: true,
+            debtor: true,
+        },
+        });
+        return c.json(debts, 200);
+    } catch (error) {
+        console.error("Error fetching debts:", error);
+        return c.json({ error: "Failed to fetch debts" }, 500);
+    }
 }
